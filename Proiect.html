@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<title>Simulare Arc–Masă</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        margin: 0;
+    }
+
+    canvas {
+        background: #020617;
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }
+
+    .panel {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 15px;
+    }
+
+    .controale, .info {
+        background: #020617;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 14px;
+        min-width: 200px;
+    }
+
+    .controale {
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 8px 12px;
+    }
+
+    .butoane {
+        margin-bottom: 10px;
+    }
+
+    button {
+        padding: 6px 14px;
+        border: none;
+        border-radius: 8px;
+        background: #38bdf8;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    button:hover {
+        background: #0ea5e9;
+    }
+
+    input {
+        width: 90px;
+    }
+</style>
+</head>
+<body>
+
+<h2>Simulare Arc–Masă</h2>
+
+<div class="butoane">
+    <button id="toggle">Simulează</button>
+    <button id="reset">Resetare</button>
+</div>
+
+<canvas id="canvas" width="400" height="400"></canvas>
+
+<div class="panel">
+    <div class="controale">
+        <label>Constanta arcului k (N/m)</label>
+        <input type="number" id="k" value="5" step="0.5">
+
+        <label>Masă m (kg)</label>
+        <input type="number" id="mass" value="1" step="0.1">
+
+        <label>Amortizare c (kg/s)</label>
+        <input type="number" id="damping" value="0.2" step="0.05">
+
+        <label>Accelerația gravitațională g (m/s²)</label>
+        <input type="number" id="gravity" value="9.81" step="0.1">
+    </div>
+
+    <div class="info" id="info"></div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const ancoraY = 40;
+const lungimeDeRepaus = 0.12;     // metri
+const pixeliPeMetru = 800;
+
+let y, viteza;
+let ruleaza = false;
+
+function resetare() {
+    y = lungimeDeRepaus;
+    viteza = 0;
+}
+
+resetare();
+
+document.getElementById("toggle").onclick = () => {
+    ruleaza = !ruleaza;
+    document.getElementById("toggle").textContent = ruleaza ? "Pauză" : "Simulează";
+};
+
+document.getElementById("reset").onclick = () => {
+    ruleaza = false;
+    document.getElementById("toggle").textContent = "Simulează";
+    resetare();
+};
+
+function deseneazaArc(lungimeMetri) {
+    const yPixeli = ancoraY + lungimeMetri * pixeliPeMetru;
+
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, ancoraY);
+
+    const spire = 15;
+    const amplitudine = 10;
+    const lungime = yPixeli - ancoraY;
+
+    for (let i = 0; i <= spire; i++) {
+        const t = i / spire;
+        const x = canvas.width / 2 + Math.sin(t * Math.PI * 6) * amplitudine;
+        const yLocal = ancoraY + t * lungime;
+        ctx.lineTo(x, yLocal);
+    }
+
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, yPixeli + 15, 15, 0, Math.PI * 2);
+    ctx.fillStyle = "#facc15";
+    ctx.fill();
+}
+
+function update() {
+    if (!ruleaza) return;
+
+    const k = +document.getElementById("k").value;
+    const m = +document.getElementById("mass").value;
+    const c = +document.getElementById("damping").value;
+    const g = +document.getElementById("gravity").value;
+
+    const deltaL = y - lungimeDeRepaus;     // m
+    const fortaArc = -k * deltaL;           // N
+    const fortaAmortizare = -c * viteza;    // N
+    const fortaGreutate = m * g;            // N
+
+    const acceleratie = (fortaArc + fortaAmortizare + fortaGreutate) / m;
+
+    const dt = 0.016;
+    viteza += acceleratie * dt;
+    y += viteza * dt;
+
+    document.getElementById("info").innerHTML = `
+        ΔL (alungire arc): ${deltaL.toFixed(3)} m<br>
+        Poziție y: ${y.toFixed(3)} m<br>
+        Viteză v: ${viteza.toFixed(3)} m/s<br>
+        Accelerație a: ${acceleratie.toFixed(3)} m/s²<br><br>
+        Forța arcului: ${fortaArc.toFixed(2)} N<br>
+        Forța de amortizare: ${fortaAmortizare.toFixed(2)} N<br>
+        Forța gravitațională: ${fortaGreutate.toFixed(2)} N
+    `;
+}
+
+function animatie() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    update();
+    deseneazaArc(y);
+    requestAnimationFrame(animatie);
+}
+
+animatie();
+</script>
+
+</body>
+</html>
